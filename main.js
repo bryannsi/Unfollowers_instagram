@@ -1,9 +1,9 @@
 import { processRawData } from "./readFile.js";
 import { saveToFile } from "./writeFile.js";
 
-function extractValues(jsonData, keyName) {
+function extractUrls(data, keyName) {
   // Determinar si jsonData es un array o si debe extraerse usando la clave
-  const dataArray = Array.isArray(jsonData) ? jsonData : jsonData[keyName];
+  const dataArray = Array.isArray(data) ? data : data[keyName];
 
   // Validar que sea un array (incluso si está vacío)
   if (!Array.isArray(dataArray)) {
@@ -31,23 +31,32 @@ function findUnfollowedUsers(followingData, followersData) {
 }
 
 // Ejecutar la lógica
-(async () => {
-  const followingData = await processRawData("./following.json");
-  const followersData = await processRawData("./followers.json");
+async function main() {
+  try {
+    //lectura en paralelo
+    const [followingData, followersData] = await Promise.all([
+      processRawData("./following.json"),
+      processRawData("./followers.json"),
+    ]);
 
-  if (followingData && followersData) {
-    // Extraer listas de usuarios seguidos y seguidores
-    const followingList = extractValues(
-      followingData,
-      "relationships_following"
-    );
-    const followersList = extractValues(followersData);
+    if (followingData && followersData) {
+      // Extraer listas de usuarios seguidos y seguidores
+      const followingList = extractUrls(
+        followingData,
+        "relationships_following"
+      );
+      const followersList = extractUrls(followersData);
 
-    // Encontrar usuarios que sigues pero no te siguen
-    const unfollowedUsers = findUnfollowedUsers(followingList, followersList);
+      // Encontrar usuarios que sigues pero no te siguen
+      const unfollowedUsers = findUnfollowedUsers(followingList, followersList);
 
-    console.dir(unfollowedUsers);
-    // Guardar en archivo
-    await saveToFile("unfollowed_users.txt", unfollowedUsers);
+      console.dir(unfollowedUsers);
+      // Guardar en archivo
+      await saveToFile("unfollowed_users.txt", unfollowedUsers);
+    }
+  } catch (err) {
+    console.error("Error procesando datos:", err);
   }
-})();
+}
+
+main();
